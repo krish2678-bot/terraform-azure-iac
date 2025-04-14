@@ -1,0 +1,80 @@
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+  tf_version: '1.6.6'
+  environment: 'staging'
+  terraformWorkingDirectory: 'infra'
+
+stages:
+
+### ------------------------------------
+### Stage 1: Terraform Validate & Plan
+### ------------------------------------
+- stage: ValidateAndPlan
+  displayName: Terraform Validate and Plan
+  jobs:
+    - job: TerraformPlan
+      displayName: Run Terraform Validate and Plan
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        - task: UsePythonVersion@0
+          inputs:
+            versionSpec: '3.x'
+
+        - task: TerraformInstaller@1
+          inputs:
+            terraformVersion: '$(tf_version)'
+
+        - checkout: self
+
+        - task: AzureCLI@2
+          displayName: Terraform Init and Plan
+          inputs:
+            azureSubscription: 'AzureServiceConnection'
+            scriptType: bash
+            scriptLocation: inlineScript
+            workingDirectory: '$(terraformWorkingDirectory)'
+            inlineScript: |
+              terraform init
+              terraform validate
+              terraform plan -out=tfplan -input=false -var="subscription_id=$(ARM_SUBSCRIPTION_ID)"
+
+        - publish: '$(terraformWorkingDirectory)/tfplan'
+          artifact: tfplan
+
+### ------------------------------------
+### Stage 2: Terraform Apply (Release)
+### ------------------------------------
+- stage: Apply
+  displayName: Terraform Apply
+  dependsOn: ValidateAndPlan
+  condition: succeeded()
+  jobs:
+    - deployment: TerraformApply
+      displayName: Terraform Apply in Azure
+      environment: 'staging' # You can parameterize this later
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: TerraformInstaller@1
+                inputs:
+                  terraformVersion: '$(tf_version)'
+
+              - download: current
+                artifact: tfplan
+
+              - task: AzureCLI@2
+                displayName: Terraform Apply
+                inputs:
+                  azureSubscription: 'AzureServiceConnection'
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  workingDirectory: '$(terraformWorkingDirectory)'
+                  inlineScript: |
+                    terraform init
+                    terraform apply -auto-approve tfplan
