@@ -34,7 +34,7 @@ stages:
         - task: AzureCLI@2
           displayName: Terraform Init and Plan
           inputs:
-            azureSubscription: 'AzureServiceConnection'
+            azureSubscription: 'terraform-acr'
             scriptType: bash
             scriptLocation: inlineScript
             workingDirectory: '$(terraformWorkingDirectory)'
@@ -71,7 +71,7 @@ stages:
               - task: AzureCLI@2
                 displayName: Terraform Apply
                 inputs:
-                  azureSubscription: 'AzureServiceConnection'
+                  azureSubscription: 'terraform-acr'
                   scriptType: bash
                   scriptLocation: inlineScript
                   workingDirectory: '$(terraformWorkingDirectory)'
