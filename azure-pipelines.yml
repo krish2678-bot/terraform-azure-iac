@@ -5,8 +5,9 @@ trigger:
       - main
 
 variables:
-  terraformWorkingDirectory: 'infra'
+  terraformWorkingDirectory: 'infra'  # The folder where your .tf files are located
   environment: 'staging'
+  ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)  # Use the variable you set in pipeline variables
 
 stages:
 - stage: ValidateAndPlan
@@ -25,7 +26,7 @@ stages:
             azureSubscription: 'terraform-acr'
             scriptType: bash
             scriptLocation: inlineScript
-            workingDirectory: $(terraformWorkingDirectory)
+            workingDirectory: $(Build.SourcesDirectory)/$(terraformWorkingDirectory)
             inlineScript: |
               echo "Installing Terraform..."
               sudo apt-get update -y
@@ -35,16 +36,16 @@ stages:
               sudo apt-get update && sudo apt-get install terraform -y
               terraform -version
 
-              echo "Running Terraform Init"
+              echo "Running Terraform Init..."
               terraform init
 
-              echo "Validating"
+              echo "Validating..."
               terraform validate
 
-              echo "Planning"
+              echo "Planning..."
               terraform plan -out=tfplan -input=false -var="subscription_id=$(ARM_SUBSCRIPTION_ID)"
 
-        - publish: $(terraformWorkingDirectory)/tfplan
+        - publish: $(Build.SourcesDirectory)/$(terraformWorkingDirectory)/tfplan
           artifact: tfplan
 
 - stage: Apply
@@ -70,7 +71,7 @@ stages:
                   azureSubscription: 'terraform-acr'
                   scriptType: bash
                   scriptLocation: inlineScript
-                  workingDirectory: $(terraformWorkingDirectory)
+                  workingDirectory: $(Build.SourcesDirectory)/$(terraformWorkingDirectory)
                   inlineScript: |
                     echo "Installing Terraform..."
                     sudo apt-get update -y
@@ -80,8 +81,8 @@ stages:
                     sudo apt-get update && sudo apt-get install terraform -y
                     terraform -version
 
-                    echo "Terraform Init"
+                    echo "Init..."
                     terraform init
 
-                    echo "Terraform Apply"
+                    echo "Apply..."
                     terraform apply -auto-approve tfplan
