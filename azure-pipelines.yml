@@ -1,5 +1,5 @@
 
- trigger:
+trigger:
   branches:
     include:
       - main
@@ -9,10 +9,6 @@ variables:
   environment: 'staging'
 
 stages:
-
-##############################
-# Stage 1: Validate & Plan
-##############################
 - stage: ValidateAndPlan
   displayName: Terraform Validate & Plan
   jobs:
@@ -24,7 +20,7 @@ stages:
         - checkout: self
 
         - task: AzureCLI@2
-          displayName: Install Terraform & Run Plan
+          displayName: Install & Run Terraform
           inputs:
             azureSubscription: 'terraform-acr'
             scriptType: bash
@@ -39,22 +35,18 @@ stages:
               sudo apt-get update && sudo apt-get install terraform -y
               terraform -version
 
-              echo "Running Terraform Init..."
+              echo "Running Terraform Init"
               terraform init
 
-              echo "Validating..."
+              echo "Validating"
               terraform validate
 
-              echo "Planning..."
+              echo "Planning"
               terraform plan -out=tfplan -input=false -var="subscription_id=$(ARM_SUBSCRIPTION_ID)"
 
         - publish: $(terraformWorkingDirectory)/tfplan
           artifact: tfplan
 
-
-##############################
-# Stage 2: Apply
-##############################
 - stage: Apply
   displayName: Terraform Apply (Release)
   dependsOn: ValidateAndPlan
@@ -73,7 +65,7 @@ stages:
                 artifact: tfplan
 
               - task: AzureCLI@2
-                displayName: Install Terraform & Apply
+                displayName: Install & Apply Terraform
                 inputs:
                   azureSubscription: 'terraform-acr'
                   scriptType: bash
@@ -88,8 +80,8 @@ stages:
                     sudo apt-get update && sudo apt-get install terraform -y
                     terraform -version
 
-                    echo "Init..."
+                    echo "Terraform Init"
                     terraform init
 
-                    echo "Apply..."
+                    echo "Terraform Apply"
                     terraform apply -auto-approve tfplan
